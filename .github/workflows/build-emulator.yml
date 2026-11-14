@@ -1,0 +1,66 @@
+name: Build 3ds-web Emulator
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * 0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repositório 3ds-web
+        uses: actions/checkout@v4
+        with:
+          repository: kuroron000234/3ds-web
+          path: 3ds-web
+          fetch-depth: 1
+
+      - name: Instalar dependências do sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git cmake python3 python3-pip
+
+      - name: Instalar Ninja via pip
+        run: pip install --user -q ninja
+
+      - name: Instalar Emscripten SDK 7.0.0
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git
+          cd emsdk
+          ./emsdk install 7.0.0
+          ./emsdk activate 7.0.0
+          echo "EMSDK_ROOT=$(pwd)/emsdk" >> $GITHUB_ENV
+
+      - name: Build do emulador 3ds-web
+        working-directory: 3ds-web
+        run: |
+          source $EMSDK_ROOT/emsdk_env.sh
+          ./bootstrap.sh build
+
+      - name: Verificar artefatos de build esperados
+        working-directory: 3ds-web/web
+        run: |
+          if [ ! -f azahar_web.js ]; then
+            echo "::error::Arquivo esperado não encontrado: azahar_web.js"
+            exit 1
+          fi
+          if [ ! -f azahar_web.wasm ]; then
+            echo "::error::Arquivo esperado não encontrado: azahar_web.wasm"
+            exit 1
+          fi
+          echo "Artefatos verificados com sucesso:"
+          ls -lh azahar_web.js azahar_web.wasm
+
+      - name: Enviar artefatos de build
+        uses: actions/upload-artifact@v4
+        with:
+          name: azahar-web-build
+          path: |
+            3ds-web/web/azahar_web.js
+            3ds-web/web/azahar_web.wasm
+          retention-days: 30
