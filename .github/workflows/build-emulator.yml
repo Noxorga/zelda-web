@@ -40,6 +40,8 @@ jobs:
         working-directory: 3ds-web
         run: |
           source $EMSDK_ROOT/emsdk_env.sh
+          chmod +x ./bootstrap.sh
+          ls -la bootstrap.sh
           ./bootstrap.sh build
 
       - name: Verificar artefatos de build esperados
